@@ -1,12 +1,12 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, ForeignKey, Integer, String
-
+from sqlalchemy import Enum
 db = SQLAlchemy()
 
 class User(db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    username = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(80), unique=False, nullable=False)
     is_active = db.Column(db.Boolean(), unique=False, nullable=False)
 
@@ -21,6 +21,7 @@ class User(db.Model):
         }
     
 class Person(db.Model):
+    __tablename__ = 'person'
     id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String(250), unique=True,nullable=False)
     name = db.Column(db.String(250), unique=False,nullable=False)
@@ -45,6 +46,7 @@ class Person(db.Model):
         }
     
 class Planet(db.Model):
+    __tablename__ = 'planet'
     id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String(250), unique=True,nullable=False)
     name = db.Column(db.String(250), unique=False,nullable=False)
@@ -70,11 +72,42 @@ class Planet(db.Model):
             "terrain":self.terrain
         }
     
+class Vehicle(db.Model):
+    __tablename__ = 'vehicle'
+    id = db.Column(db.Integer, primary_key=True)
+    url = db.Column(db.String(250), unique=True,nullable=False)
+    name = db.Column(db.String(250), unique=False,nullable=False)
+    model = db.Column(db.String(250), unique=False,nullable=True)
+    vehicle_class = db.Column(db.String(250), unique=False, nullable=True)
+    manufacturer = db.Column(db.String(250), unique=False, nullable=True)
+    cost = db.Column(db.Integer, unique=False, nullable=True)
+    length = db.Column(db.Integer, unique=False, nullable=True)
+    crew = db.Column(db.Integer, unique=False, nullable=True)
+    cargo = db.Column(db.Integer, unique=False, nullable=True)
+    consumables = db.Column(db.Integer, unique=False, nullable=True)
+    max_atm_speed = db.Column(db.Integer, unique=False, nullable=True)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "url": self.url,
+            "vehicle_class":self.vehicle_class,
+            "model": self.model,
+            "manufacturer": self.manufacturer,
+            "crew": self.crew,
+            "cargo":self.cargo,
+            "cost":self.cost,
+            "consumables":self.consumables,
+            "max_atm_speed":self.max_atm_speed
+        }
+    
 class Favorite(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user = Column(db.Integer, ForeignKey('user.id'), nullable=False)
-    planet_id = db.Column(db.Integer, unique=False, nullable=True)
-    person_id = db.Column(db.Integer, unique=False, nullable=True)
+    user = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    category = db.Column(Enum('vehicle','character','planet',name='cat'), nullable=False)
+    planet_id = db.Column(db.Integer,db.ForeignKey('planet.id'), unique=False, nullable=True)
+    person_id = db.Column(db.Integer,db.ForeignKey('person.id'), unique=False, nullable=True)
 
     def serialize(self):
         return {
@@ -83,3 +116,4 @@ class Favorite(db.Model):
             "planet_id": self.planet_id,
             "person_id": self.person_id,
         }
+    
