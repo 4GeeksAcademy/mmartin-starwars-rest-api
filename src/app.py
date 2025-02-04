@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, Person, Planet, Favorite
+from models import db, User, Person, Planet, Favorite,Vehicle
 #from models import Person
 
 app = Flask(__name__)
@@ -52,13 +52,13 @@ def get_users_list():
     return jsonify(response_body), 200
 
 @app.route('/people', methods=['GET'])
-def get_people_names():
+def get_people():
     people_db = Person.query.all()
-    response_body = [person.name for person in people_db]
+    response_body = [person.identify() for person in people_db]
     return jsonify(response_body), 200
 
 @app.route('/people/<int:people_id>', methods=['GET'])
-def get_person_data(people_id):
+def get_people_data(people_id):
     person_db = Person.query.get(people_id)
     if person_db is not None:
         response_body = person_db.serialize()
@@ -66,9 +66,9 @@ def get_person_data(people_id):
     return jsonify('Bad Request: Character not found'), 400
 
 @app.route('/planets', methods=['GET'])
-def get_planets_names():
+def get_planets():
     planets_db = Planet.query.all()
-    response_body = [planet.name for planet in planets_db]
+    response_body = [planet.identify() for planet in planets_db]
     return jsonify(response_body), 200
 
 @app.route('/planets/<int:planet_id>', methods=['GET'])
@@ -79,19 +79,36 @@ def get_planet_data(planet_id):
         return jsonify(response_body), 200
     return jsonify('Bad Request: Planet not found'), 400
 
+@app.route('/vehicles', methods=['GET'])
+def get_vehicles():
+    vehicles_db = Vehicle.query.all()
+    response_body = [vehicle.identify() for vehicle in vehicles_db]
+    return jsonify(response_body), 200
+
+@app.route('/vehicles/<int:vehicle_id>', methods=['GET'])
+def get_vehicle_data(planet_id):
+    vehicle_db = Vehicle.query.get(planet_id)
+    if vehicle_db is not None:
+        response_body = vehicle_db.serialize()
+        return jsonify(response_body), 200
+    return jsonify('Bad Request: Vehicle not found'), 400
+
 @app.route('/users/favorites', methods=['GET'])
 def get_favorites():
     active_user = User.query.filter_by(is_active=True).first()
     if active_user is not None:
         fav_list = Favorite.query.filter_by(user = active_user.id)
-        response_body = []
+        response_body = [active_user.serialize()]
         for item in fav_list:
             if item.planet_id:
                 planet = Planet.query.get(item.planet_id)
-                response_body.append({"name":planet.name,"url":planet.url})
+                response_body.append(planet.identify())
             elif item.person_id:
                 person = Person.query.get(item.person_id)
-                response_body.append({"name":person.name,"url":person.url})
+                response_body.append(person.identify())
+            elif item.vehicle_id:
+                vehicle = Vehicle.query.get(item.vehicle_id)
+                response_body.append(vehicle.identify())
         return jsonify(response_body), 200
     return jsonify('Bad request: Please login to view list'),400
 
@@ -102,24 +119,40 @@ def add_favorite_planet(planet_id):
         return jsonify('Bad Request: Please login to add planet'),400
     planet = Planet.query.get(planet_id)
     if planet is not None:
-        fav_add = Favorite(user=active_user.id,planet_id = planet.id)
+        fav_add = Favorite(user=active_user.id, planet_id = planet.id, category='planet')
         db.session.add(fav_add)
         db.session.commit()
-        return jsonify('Success, planet added to favorites'), 200
+        response_body = planet.serialize()
+        return jsonify(f'Success, planet added to favorites: {response_body}'), 200
     return jsonify('Bad Request: Planet not found in database'),400
 
-@app.route('/favorite/person/<int:person_id>', methods=['POST'])
+@app.route('/favorite/people/<int:person_id>', methods=['POST'])
 def add_favorite_person(person_id):
     active_user = User.query.filter_by(is_active=True).first()
     if active_user is None:
         return jsonify('Bad Request: Please login to add person'),400
     person = Person.query.get(person_id)
     if person is not None:
-        fav_add = Favorite(user=active_user.id,person_id = person.id)
+        fav_add = Favorite(user=active_user.id,person_id = person.id, category='character')
         db.session.add(fav_add)
         db.session.commit()
-        return jsonify('Success, person added to favorites'), 200
+        response_body = person.serialize()
+        return jsonify(f'Success, person added to favorites {response_body}'), 200
     return jsonify('Bad Request: Person not found in database'),400
+
+@app.route('/favorite/vehicle/<int:vehicle_id>', methods=['POST'])
+def add_favorite_vehicle(vehicle_id):
+    active_user = User.query.filter_by(is_active=True).first()
+    if active_user is None:
+        return jsonify('Bad Request: Please login to add vehicle'),400
+    vehicle = Vehicle.query.get(vehicle_id)
+    if vehicle is not None:
+        fav_add = Favorite(user=active_user.id, vehicle_id = vehicle.id, category='vehicle')
+        db.session.add(fav_add)
+        db.session.commit()
+        response_body = vehicle.serialize()
+        return jsonify(f'Success, vehicle added to favorites: {response_body}'), 200
+    return jsonify('Bad Request: Vehicle not found in database'),400
 
 @app.route('/favorite/planet/<int:planet_del_id>', methods=['DELETE'])
 def delete_favorite_planet(planet_del_id):
@@ -133,17 +166,131 @@ def delete_favorite_planet(planet_del_id):
         return jsonify('Success, planet deleted from favorite list'), 200
     return jsonify('Bad Request: Planet not found in favorites'),400
 
-@app.route('/favorite/planet/<int:person_del_id>', methods=['DELETE'])
+@app.route('/favorite/people/<int:person_del_id>', methods=['DELETE'])
 def delete_favorite_person(person_del_id):
     active_user = User.query.filter_by(is_active=True).first()
     if active_user is None:
-        return jsonify('Bad Request: Please login to remove planet'),400
+        return jsonify('Bad Request: Please login to remove person'),400
     person = Favorite.query.filter_by(user = active_user.id, person_id = person_del_id).first()
     if person is not None:
         db.session.delete(person)
         db.session.commit()
         return jsonify('Success, person deleted from favorite list'), 200
     return jsonify('Bad Request: Person not found in favorites'),400
+
+@app.route('/favorite/vehicle/<int:vehicle_del_id>', methods=['DELETE'])
+def delete_favorite_vehicle(vehicle_del_id):
+    active_user = User.query.filter_by(is_active=True).first()
+    if active_user is None:
+        return jsonify('Bad Request: Please login to remove vehicle'),400
+    vehicle = Favorite.query.filter_by(user = active_user.id, vehicle_id = vehicle_del_id).first()
+    if vehicle is not None:
+        db.session.delete(vehicle)
+        db.session.commit()
+        return jsonify('Success, vehicle deleted from favorite list'), 200
+    return jsonify('Bad Request: vehicle not found in favorites'),400
+
+#Extra task
+
+@app.route('/planets', methods=['POST'])
+def add_planet():
+    request_body = request.get_json()
+    name = request_body.get('name')
+    url = request_body.get('url')
+    rotation = request_body.get('rotation')
+    orbit = request_body.get('orbit')
+    population = request_body.get('population')
+    diameter = request_body.get('diameter')
+    climate = request_body.get('climate')
+    surface_water = request_body.get('surface_water')
+    terrain = request_body.get('terrain')
+    if name is None or url is None:
+        return jsonify('Bad Request: Incomplete data, name or url missing'),400
+    try:
+        new_planet = Planet(name=name,url=url,rotation=rotation,orbit=orbit,population=population,
+                            diameter=diameter,climate=climate,surface_water=surface_water,terrain=terrain)
+        db.session.add(new_planet)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return(f'Bad Request: Something went wrong, check your input type')
+    return jsonify(f'Success, planet {new_planet.name} has been assigned id number {new_planet.id}'),200
+
+@app.route('/people', methods=['POST'])
+def add_person():
+    request_body = request.get_json()
+    name = request_body.get('name')
+    url = request_body.get('url')
+    gender = request_body.get('gender','N/A')
+    hair = request_body.get('hair')
+    skin = request_body.get('skin')
+    weight = request_body.get('home')
+    height = request_body.get('height')
+
+    if name is None or url is None:
+        return jsonify('Bad Request: Incomplete data, name and/or url missing'),400
+    try:
+        new_person = Person(name=name,url=url,gender=gender,skin=skin,hair=hair,weight=weight,height=height)
+        db.session.add(new_person)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return(f'Bad Request: Something went wrong, check your input type')
+    return jsonify(f'Success, {new_person.name} has been assigned id number {new_person.id}'),200
+
+@app.route('/vehicles', methods=['POST'])
+def add_vehicle():
+    request_body = request.get_json()
+    name = request_body.get('name')
+    url = request_body.get('url')
+    vehicle_class= request_body.get('vehicle_class')
+    model = request_body.get('model')
+    manufacturer = request_body.get('manufacturer')
+    crew = request_body.get('crew')
+    cargo = request_body.get('cargo')
+    cost = request_body.get('cost')
+    consumables = request_body.get('cosumables')
+    max_atm_speed = request_body.get('max_atm_speed')
+
+    if name is None or url is None:
+        return jsonify('Bad Request: Incomplete data, name and/or url missing'),400
+    try:
+        new_vehicle = Vehicle(name=name,url=url,vehicle_class=vehicle_class,model=model,manufacturer=manufacturer,crew=crew,
+                              cargo=cargo,cost=cost,consumables=consumables,max_atm_speed=max_atm_speed)
+        db.session.add(new_vehicle)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return(f'Bad Request: Something went wrong, check your input type')
+    return jsonify(f'Success, the {new_vehicle.name} has been assigned id number {new_vehicle.id}'),200
+
+@app.route('/planets/<int:planet_id>', methods=['DELETE'])
+def delete_planet(planet_id):
+    planet = Planet.query.get(planet_id)
+    if planet is not None:
+        db.session.delete(planet)
+        db.session.commit()
+        return jsonify('Success, planet deleted from database'), 200
+    return jsonify('Bad Request: Planet not found in database'),400
+
+@app.route('/people/<int:people_id>', methods=['DELETE'])
+def delete_person(people_id):
+    person = Person.query.get(people_id)
+    if person is not None:
+        db.session.delete(person)
+        db.session.commit()
+        return jsonify('Success, person deleted from database'), 200
+    return jsonify('Bad Request: Person not found in database'),400
+
+@app.route('/vehicles/<int:vehicle_id>', methods=['DELETE'])
+def delete_vehicle(vehicle_id):
+    vehicle = Vehicle.query.get(vehicle_id)
+    if vehicle is not None:
+        db.session.delete(vehicle)
+        db.session.commit()
+        return jsonify('Success, vehicle deleted from database'), 200
+    return jsonify('Bad Request: Vehicle not found in database'),400
+    
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))

@@ -44,6 +44,11 @@ class Person(db.Model):
             "home":self.home,
             "height":self.height
         }
+    def identify(self):
+        return{
+            "id": self.id,
+            "name": self.name,
+            "url": self.url}
     
 class Planet(db.Model):
     __tablename__ = 'planet'
@@ -71,6 +76,12 @@ class Planet(db.Model):
             "surface_water":self.surface_water,
             "terrain":self.terrain
         }
+    
+    def identify(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "url": self.url}
     
 class Vehicle(db.Model):
     __tablename__ = 'vehicle'
@@ -101,6 +112,11 @@ class Vehicle(db.Model):
             "consumables":self.consumables,
             "max_atm_speed":self.max_atm_speed
         }
+    def identify(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "url": self.url}
     
 class Favorite(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -108,12 +124,14 @@ class Favorite(db.Model):
     category = db.Column(Enum('vehicle','character','planet',name='cat'), nullable=False)
     planet_id = db.Column(db.Integer,db.ForeignKey('planet.id'), unique=False, nullable=True)
     person_id = db.Column(db.Integer,db.ForeignKey('person.id'), unique=False, nullable=True)
-
+    vehicle_id = db.Column(db.Integer,db.ForeignKey('vehicle.id'), unique=False, nullable=True)
+    
     def serialize(self):
         return {
             "id": self.id,
             "user": self.user,
             "planet_id": self.planet_id,
             "person_id": self.person_id,
+            "vehicle_id": self.person_id,
         }
     
