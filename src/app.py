@@ -86,8 +86,8 @@ def get_vehicles():
     return jsonify(response_body), 200
 
 @app.route('/vehicles/<int:vehicle_id>', methods=['GET'])
-def get_vehicle_data(planet_id):
-    vehicle_db = Vehicle.query.get(planet_id)
+def get_vehicle_data(vehicle_id):
+    vehicle_db = Vehicle.query.get(vehicle_id)
     if vehicle_db is not None:
         response_body = vehicle_db.serialize()
         return jsonify(response_body), 200
@@ -119,7 +119,7 @@ def add_favorite_planet(planet_id):
         return jsonify('Bad Request: Please login to add planet'),400
     planet = Planet.query.get(planet_id)
     if planet is not None:
-        fav_add = Favorite(user=active_user.id, planet_id = planet.id, category='planet')
+        fav_add = Favorite(user=active_user.id, planet_id = planet.id)
         db.session.add(fav_add)
         db.session.commit()
         response_body = planet.serialize()
@@ -133,7 +133,7 @@ def add_favorite_person(person_id):
         return jsonify('Bad Request: Please login to add person'),400
     person = Person.query.get(person_id)
     if person is not None:
-        fav_add = Favorite(user=active_user.id,person_id = person.id, category='character')
+        fav_add = Favorite(user=active_user.id,person_id = person.id)
         db.session.add(fav_add)
         db.session.commit()
         response_body = person.serialize()
@@ -147,7 +147,7 @@ def add_favorite_vehicle(vehicle_id):
         return jsonify('Bad Request: Please login to add vehicle'),400
     vehicle = Vehicle.query.get(vehicle_id)
     if vehicle is not None:
-        fav_add = Favorite(user=active_user.id, vehicle_id = vehicle.id, category='vehicle')
+        fav_add = Favorite(user=active_user.id, vehicle_id = vehicle.id)
         db.session.add(fav_add)
         db.session.commit()
         response_body = vehicle.serialize()
@@ -163,7 +163,7 @@ def delete_favorite_planet(planet_del_id):
     if planet is not None:
         db.session.delete(planet)
         db.session.commit()
-        return jsonify('Success, planet deleted from favorite list'), 200
+        return jsonify('Success, planet deleted from favorites list'), 200
     return jsonify('Bad Request: Planet not found in favorites'),400
 
 @app.route('/favorite/people/<int:person_del_id>', methods=['DELETE'])
@@ -175,7 +175,7 @@ def delete_favorite_person(person_del_id):
     if person is not None:
         db.session.delete(person)
         db.session.commit()
-        return jsonify('Success, person deleted from favorite list'), 200
+        return jsonify('Success, person deleted from favorites list'), 200
     return jsonify('Bad Request: Person not found in favorites'),400
 
 @app.route('/favorite/vehicle/<int:vehicle_del_id>', methods=['DELETE'])
@@ -187,7 +187,7 @@ def delete_favorite_vehicle(vehicle_del_id):
     if vehicle is not None:
         db.session.delete(vehicle)
         db.session.commit()
-        return jsonify('Success, vehicle deleted from favorite list'), 200
+        return jsonify('Success, vehicle deleted from favorites list'), 200
     return jsonify('Bad Request: vehicle not found in favorites'),400
 
 #Extra task
@@ -197,8 +197,8 @@ def add_planet():
     request_body = request.get_json()
     name = request_body.get('name')
     url = request_body.get('url')
-    rotation = request_body.get('rotation')
-    orbit = request_body.get('orbit')
+    rotation = request_body.get('rotation_period')
+    orbit = request_body.get('orbital_period')
     population = request_body.get('population')
     diameter = request_body.get('diameter')
     climate = request_body.get('climate')
@@ -213,7 +213,7 @@ def add_planet():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return(f'Bad Request: Something went wrong, check your input type')
+        return(f'Bad Request: Something went wrong, check your inputs')
     return jsonify(f'Success, planet {new_planet.name} has been assigned id number {new_planet.id}'),200
 
 @app.route('/people', methods=['POST'])
@@ -222,15 +222,18 @@ def add_person():
     name = request_body.get('name')
     url = request_body.get('url')
     gender = request_body.get('gender','N/A')
-    hair = request_body.get('hair')
-    skin = request_body.get('skin')
-    weight = request_body.get('home')
+    hair = request_body.get('hair_color')
+    skin = request_body.get('skin_color')
+    eyes = request_body.get('eye_color')
+    weight = request_body.get('mass')
     height = request_body.get('height')
+    birth = request_body.get('birth_year')
+    planet_id = request_body.get('planet_id')
 
     if name is None or url is None:
         return jsonify('Bad Request: Incomplete data, name and/or url missing'),400
     try:
-        new_person = Person(name=name,url=url,gender=gender,skin=skin,hair=hair,weight=weight,height=height)
+        new_person = Person(name=name,url=url,gender=gender,skin=skin,hair=hair,weight=weight,height=height,eyes=eyes,birth=birth,planet_id=planet_id)
         db.session.add(new_person)
         db.session.commit()
     except Exception as e:
@@ -247,16 +250,18 @@ def add_vehicle():
     model = request_body.get('model')
     manufacturer = request_body.get('manufacturer')
     crew = request_body.get('crew')
-    cargo = request_body.get('cargo')
-    cost = request_body.get('cost')
-    consumables = request_body.get('cosumables')
-    max_atm_speed = request_body.get('max_atm_speed')
+    length = request_body.get('length')
+    passengers = request_body.get('passengers')
+    cargo = request_body.get('cargo_capacity')
+    cost = request_body.get('cost_in_credits')
+    consumables = request_body.get('consumables')
+    max_atm_speed = request_body.get('max_atmosphering_speed')
 
     if name is None or url is None:
         return jsonify('Bad Request: Incomplete data, name and/or url missing'),400
     try:
         new_vehicle = Vehicle(name=name,url=url,vehicle_class=vehicle_class,model=model,manufacturer=manufacturer,crew=crew,
-                              cargo=cargo,cost=cost,consumables=consumables,max_atm_speed=max_atm_speed)
+                              cargo=cargo,cost=cost,consumables=consumables,max_atm_speed=max_atm_speed,passengers=passengers,length=length)
         db.session.add(new_vehicle)
         db.session.commit()
     except Exception as e:
