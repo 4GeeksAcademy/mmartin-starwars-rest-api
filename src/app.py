@@ -191,7 +191,6 @@ def delete_favorite_vehicle(vehicle_del_id):
     return jsonify('Bad Request: vehicle not found in favorites'),400
 
 #Extra task
-
 @app.route('/planets', methods=['POST'])
 def add_planet():
     request_body = request.get_json()
@@ -213,9 +212,9 @@ def add_planet():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return(f'Bad Request: Something went wrong, check your inputs')
+        return(f'Bad Request: Something went wrong, check your inputs'),400
     return jsonify(f'Success, planet {new_planet.name} has been assigned id number {new_planet.id}'),200
-
+#Include a planet_id as part of the request, the id must be already in db Planet.
 @app.route('/people', methods=['POST'])
 def add_person():
     request_body = request.get_json()
@@ -238,7 +237,7 @@ def add_person():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return(f'Bad Request: Something went wrong, check your input type')
+        return(f'Bad Request: Something went wrong, check your input type'),400
     return jsonify(f'Success, {new_person.name} has been assigned id number {new_person.id}'),200
 
 @app.route('/vehicles', methods=['POST'])
@@ -266,7 +265,7 @@ def add_vehicle():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return(f'Bad Request: Something went wrong, check your input type')
+        return(f'Bad Request: Something went wrong, check your input type'),400
     return jsonify(f'Success, the {new_vehicle.name} has been assigned id number {new_vehicle.id}'),200
 
 @app.route('/planets/<int:planet_id>', methods=['DELETE'])
